@@ -3,7 +3,7 @@ mod rules;
 use clap::{command, Parser, Subcommand};
 use proc_macro2::Ident;
 use rules::{Classificator, MacroRules, Matcher, Repetition, Rule, Separator};
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, fmt::Display, path::PathBuf};
 use syn::{Item, ItemMacro, ItemMod};
 use syn_inline_mod::parse_and_inline_modules;
 
@@ -111,7 +111,7 @@ fn main() {
                 one_of(
                     generic_rules
                         .into_iter()
-                        .map(|(rn, ident)| format!("seq({ident}, \"!\", $.{rn})"))
+                        .map(|(rn, ident)| format!("seq({}, \"!\", $.{rn})", quoted(ident)))
                 )
             ));
 
@@ -143,7 +143,7 @@ fn one_of<T: IntoIterator<Item = String>>(dsl_rules: T) -> String {
     res
 }
 
-fn quoted(string: String) -> String {
+fn quoted<T: Display>(string: T) -> String {
     format!("\"{string}\"")
 }
 
@@ -163,14 +163,14 @@ fn matchers_to_dsl_rule<T: IntoIterator<Item = Matcher>>(matchers: T) -> String 
 
 fn matcher_to_dsl_rule(matcher: Matcher) -> String {
     match matcher {
-        Matcher::Punct(p) => quoted(p.as_char().to_string()),
-        Matcher::Ident(i) => quoted(i.to_string()),
-        Matcher::Literal(l) => quoted(l.to_string()),
+        Matcher::Punct(p) => quoted(p.as_char()),
+        Matcher::Ident(i) => quoted(i),
+        Matcher::Literal(l) => quoted(l),
         Matcher::Group {
             delimiter: _,
             content,
         } => matchers_to_dsl_rule(content),
-        Matcher::Lifetime(l) => quoted(l.to_string()),
+        Matcher::Lifetime(l) => quoted(l),
         Matcher::Repeat {
             content,
             separator,
@@ -211,7 +211,11 @@ fn repetition_matcher_to_dsl_rule(
     }
     .to_string();
     res.push_str(&if let Some(s) = separator {
-        format!("seq({}, {s})", matchers_to_dsl_rule(content))
+        format!(
+            "seq({}, {})",
+            matchers_to_dsl_rule(content),
+            quoted(s.to_string())
+        )
     } else {
         matchers_to_dsl_rule(content)
     });
