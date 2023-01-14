@@ -61,7 +61,7 @@ fn main() {
             });
 
             output.push_str(&format!(
-                "known_macro_invocation: $ => prec(2, {}),",
+                "known_macro_invocation: $ => {},",
                 one_of(with_idents.into_iter().map(|(ident, rules)| { let input_rule = one_of(rules); format!(
                     "seq({}, \"!\", choice(seq(\"(\", {}, \")\"), seq(\"{{\", {}, \"}}\"), seq(\"[\", {}, \"]\")))",
                     quoted(ident),
