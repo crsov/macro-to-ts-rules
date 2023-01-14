@@ -50,43 +50,23 @@ fn main() {
 
             let mut output = String::new();
 
-            let mut with_idents = HashMap::<Ident, Vec<(String, String)>>::new();
+            let mut with_idents = HashMap::<Ident, Vec<String>>::new();
 
-            results.for_each(|(rule_definition, rule_name, ident)| {
+            results.for_each(|(rule, ident)| {
                 if let Some(with_this_ident) = with_idents.get_mut(&ident) {
-                    with_this_ident.push((rule_definition, rule_name))
+                    with_this_ident.push(rule)
                 } else {
-                    with_idents.insert(ident, vec![(rule_definition, rule_name)]);
+                    with_idents.insert(ident, vec![rule]);
                 }
             });
 
-            let mut generic_rules = vec![];
-
-            with_idents
-                .into_iter()
-                .for_each(|(ident, with_this_ident)| {
-                    let mut local_rule_names = vec![];
-                    with_this_ident
-                        .into_iter()
-                        .for_each(|(rule_definition, rule_name)| {
-                            output.push_str(&format!("{rule_definition},"));
-                            local_rule_names.push(rule_name);
-                        });
-                    let generic_rule_name = format!("macro_{}_input", &ident);
-                    generic_rules.push((generic_rule_name.clone(), ident));
-                    output.push_str(&format!(
-                        "{generic_rule_name}: $ => {},",
-                        one_of(local_rule_names.into_iter().map(|rn| format!("$.{rn}")))
-                    ))
-                });
-
             output.push_str(&format!(
                 "known_macro_invocation: $ => prec(2, {}),",
-                one_of(
-                    generic_rules
-                        .into_iter()
-                        .map(|(rn, ident)| format!("seq({}, \"!\", $.{rn})", quoted(ident)))
-                )
+                one_of(with_idents.into_iter().map(|(ident, rules)| { let input_rule = one_of(rules); format!(
+                    "seq({}, \"!\", choice(seq(\"(\", {}, \")\"), seq(\"{{\", {}, \"}}\"), seq(\"[\", {}, \"]\")))",
+                    quoted(ident),
+                    &input_rule,&input_rule,&input_rule
+                )}))
             ));
 
             println!("{output}");

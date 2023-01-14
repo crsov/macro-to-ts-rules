@@ -33,16 +33,16 @@ const META_RULE: &str = "choice($.inner_attribute_item, $.attribute_item, choice
             field(\"arguments\", alias($.delim_token_tree, $.token_tree))
           ))";
 
-pub fn macro_to_ts_dsl(macro_: (Ident, MacroRules)) -> (String, String, Ident) {
-    let dsl_rule_name = format!("macro_{}_{}_input", macro_.0, uuid::Uuid::new_v4().simple());
-    let mut res = format!("{dsl_rule_name}: $ => ");
-    res.push_str(&one_of(macro_.1.rules.into_iter().map(
-        |Rule {
-             matcher,
-             expansion: _,
-         }| matchers_to_dsl_rule(matcher),
-    )));
-    (res, dsl_rule_name, macro_.0)
+pub fn macro_to_ts_dsl(macro_: (Ident, MacroRules)) -> (String, Ident) {
+    (
+        one_of(macro_.1.rules.into_iter().map(
+            |Rule {
+                 matcher,
+                 expansion: _,
+             }| matchers_to_dsl_rule(matcher),
+        )),
+        macro_.0,
+    )
 }
 
 pub fn one_of<T: IntoIterator<Item = String>>(dsl_rules: T) -> String {
