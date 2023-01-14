@@ -12,7 +12,6 @@ macro_rules! use_rule {
 
 use_rule!(LIFETIME_RULE, lifetime);
 use_rule!(TYPE_RULE, _type);
-use_rule!(TOKENTREE_RULE, delim_token_tree);
 // TODO: Use non-crate visibility modifier
 use_rule!(VISIBILITY_RULE, visibility_modifier);
 use_rule!(PATH_RULE, _path);
@@ -26,6 +25,7 @@ use_rule!(BLOCK_RULE, block);
 use_rule!(IDENT_RULE, identifier);
 use_rule!(EXPR_RULE, _expression);
 
+const TOKENTREE_RULE: &str = "repeat($._delim_tokens)";
 const ITEM_RULE: &str = "choice(choice($.macro_invocation, $.macro_definition), seq(optional($.visibility_modifier), $._declaration_statement), $.attribute_item)";
 // TODO: Is this ok?
 const META_RULE: &str = "choice($.inner_attribute_item, $.attribute_item, choice(
