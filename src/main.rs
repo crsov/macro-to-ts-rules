@@ -65,7 +65,9 @@ fn main() {
                 one_of(with_idents.into_iter().map(|(ident, rules)| { let input_rule = one_of(rules); format!(
                     "seq({}, \"!\", choice(seq(\"(\", {}, \")\"), seq(\"{{\", {}, \"}}\"), seq(\"[\", {}, \"]\")))",
                     quoted(ident),
-                    &input_rule,&input_rule,&input_rule
+                    &input_rule, 
+                    &input_rule, 
+                    &input_rule
                 )}))
             ));
 
