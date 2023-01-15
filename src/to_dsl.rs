@@ -72,7 +72,7 @@ pub fn one_of_ordered<T: IntoIterator<Item = String>>(dsl_rules: T) -> String {
 }
 
 pub fn quoted<T: Display>(string: T) -> String {
-    format!("\"{string}\"")
+    format!("\"{}\"", string.to_string().replace('"', "\\\""))
 }
 
 pub fn matchers_to_dsl_rule<T: IntoIterator<Item = Matcher>>(matchers: T) -> String {
