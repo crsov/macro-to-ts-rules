@@ -24,8 +24,8 @@ use_rule!(BLOCK_RULE, block);
 // TODO: Is this ok?
 use_rule!(IDENT_RULE, identifier);
 use_rule!(EXPR_RULE, _expression);
+use_rule!(TOKENTREE_RULE, _delim_tokens);
 
-const TOKENTREE_RULE: &str = "repeat($._delim_tokens)";
 const ITEM_RULE: &str = "choice(choice($.macro_invocation, $.macro_definition), seq(optional($.visibility_modifier), $._declaration_statement), $.attribute_item)";
 // TODO: Is this ok?
 const META_RULE: &str = "choice($.inner_attribute_item, $.attribute_item, choice(
