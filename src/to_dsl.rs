@@ -35,7 +35,7 @@ const META_RULE: &str = "choice($.inner_attribute_item, $.attribute_item, choice
 
 pub fn macro_to_ts_dsl(macro_: (Ident, MacroRules)) -> (String, Ident) {
     (
-        one_of(macro_.1.rules.into_iter().map(
+        one_of_ordered(macro_.1.rules.into_iter().map(
             |Rule {
                  matcher,
                  expansion: _,
@@ -51,6 +51,21 @@ pub fn one_of<T: IntoIterator<Item = String>>(dsl_rules: T) -> String {
     if let Some(r) = rs.next() {
         res.push_str(&r);
         res.push_str(&rs.map(|r| format!(", {r}")).collect::<String>());
+    }
+    res.push(')');
+    res
+}
+
+pub fn one_of_ordered<T: IntoIterator<Item = String>>(dsl_rules: T) -> String {
+    let mut res = "choice(".to_string();
+    let mut rs = dsl_rules.into_iter();
+    if let Some(r) = rs.next() {
+        res.push_str(&r);
+        res.push_str(
+            &rs.enumerate()
+                .map(|(i, r)| format!(", prec(-{}, {r})", i + 1))
+                .collect::<String>(),
+        );
     }
     res.push(')');
     res
@@ -117,21 +132,27 @@ fn repetition_matcher_to_dsl_rule(
     separator: Option<Separator>,
     repetition: Repetition,
 ) -> String {
-    let mut res = match repetition {
-        Repetition::AtMostOnce => "optional(",
-        Repetition::AtLeastOnce => "repeat1(",
-        Repetition::Repeated => "repeat(",
+    let rule = matchers_to_dsl_rule(content);
+    match repetition {
+        Repetition::AtMostOnce => format!("optional({rule})"),
+        Repetition::AtLeastOnce => {
+            if let Some(s) = separator {
+                let sep = quoted(s);
+                format!(
+                    "seq(repeat(seq({}, {})), {}, optional({}))",
+                    &rule, &sep, rule, sep
+                )
+            } else {
+                format!("repeat1({rule})")
+            }
+        }
+        Repetition::Repeated => {
+            if let Some(s) = separator {
+                let sep = quoted(s);
+                format!("seq(repeat(seq({}, {})), optional({}))", &rule, &sep, rule)
+            } else {
+                format!("repeat({rule})")
+            }
+        }
     }
-    .to_string();
-    res.push_str(&if let Some(s) = separator {
-        format!(
-            "seq({}, {})",
-            matchers_to_dsl_rule(content),
-            quoted(s.to_string())
-        )
-    } else {
-        matchers_to_dsl_rule(content)
-    });
-    res.push(')');
-    res
 }
