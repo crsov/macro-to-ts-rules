@@ -1,3 +1,7 @@
+// Based on MIT-licensed code from
+// https://github.com/lukaslueg/macro_railroad/blob/b732c8f3157df7ebed0fa0a13d99b9e7342900be/src/parser.rs,
+// thanks to its author for open sourcing it
+
 use std::fmt::Display;
 
 use proc_macro2::{Delimiter, Ident, Literal, Punct, TokenStream, TokenTree};
