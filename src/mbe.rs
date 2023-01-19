@@ -4,7 +4,7 @@
 
 use std::fmt::Display;
 
-use proc_macro2::{Delimiter, Ident, Literal, Punct, TokenStream, TokenTree};
+use proc_macro2::{Delimiter, Ident, Literal, Punct, Spacing, TokenStream, TokenTree};
 
 use syn::ext::IdentExt;
 use syn::parse::{Error, Parse, ParseBuffer, ParseStream, Result};
@@ -25,6 +25,7 @@ pub struct Rule {
 #[derive(Debug)]
 pub enum Matcher {
     Punct(Punct),
+    Puncts(Vec<Punct>),
     Ident(Ident),
     Lifetime(Lifetime),
     Literal(Literal),
@@ -56,6 +57,7 @@ pub enum Repetition {
 #[derive(Debug)]
 pub enum Separator {
     Punct(Punct),
+    Puncts(Vec<Punct>),
     Ident(Ident),
     Literal(Literal),
 }
@@ -64,6 +66,7 @@ impl Display for Separator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Punct(x) => x.fmt(f),
+            Self::Puncts(ps) => ps.iter().map(|p| p.as_char()).collect::<String>().fmt(f),
             Self::Ident(x) => x.fmt(f),
             Self::Literal(x) => x.fmt(f),
         }
@@ -148,6 +151,22 @@ impl Matcher {
         }
         Ok(matchers)
     }
+
+    fn finish_parsing_puncts(input: ParseStream<'_>, mut puncts: Vec<Punct>) -> Result<Self> {
+        Ok(match input.parse()? {
+            TokenTree::Punct(punct) if matches!(punct.spacing(), Spacing::Alone) => Self::Puncts({
+                puncts.push(punct);
+                puncts
+            }),
+            TokenTree::Punct(punct) if matches!(punct.spacing(), Spacing::Joint) => {
+                Self::finish_parsing_puncts(input, {
+                    puncts.push(punct);
+                    puncts
+                })?
+            }
+            _ => unreachable!(),
+        })
+    }
 }
 
 impl Parse for Matcher {
@@ -187,7 +206,13 @@ impl Parse for Matcher {
         } else {
             match input.parse()? {
                 TokenTree::Ident(ident) => Ok(Matcher::Ident(ident)),
-                TokenTree::Punct(punct) => Ok(Matcher::Punct(punct)),
+                TokenTree::Punct(p) if matches!(p.spacing(), Spacing::Alone) => {
+                    Ok(Matcher::Punct(p))
+                }
+                TokenTree::Punct(p) if matches!(p.spacing(), Spacing::Joint) => {
+                    Matcher::finish_parsing_puncts(input, vec![p])
+                }
+                TokenTree::Punct(_) => unreachable!(),
                 TokenTree::Literal(literal) => Ok(Matcher::Literal(literal)),
                 TokenTree::Group(_) => unreachable!(),
             }
@@ -203,18 +228,52 @@ impl Separator {
             input.parse().map(Some)
         }
     }
+
+    fn finish_parsing_puncts(input: ParseStream<'_>, mut puncts: Vec<Punct>) -> Result<Self> {
+        Ok(match input.parse()? {
+            TokenTree::Punct(punct) if matches!(punct.spacing(), Spacing::Alone) => {
+                Separator::Puncts({
+                    puncts.push(punct);
+                    puncts
+                })
+            }
+            TokenTree::Punct(punct) if matches!(punct.spacing(), Spacing::Joint) => {
+                if input.peek(Token![*]) || input.peek(Token![+]) || input.peek(Token![?]) {
+                    Separator::Puncts({
+                        puncts.push(punct);
+                        puncts
+                    })
+                } else {
+                    Self::finish_parsing_puncts(input, {
+                        puncts.push(punct);
+                        puncts
+                    })?
+                }
+            }
+            _ => unreachable!(),
+        })
+    }
 }
 
 impl Parse for Separator {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         Ok(match input.parse()? {
             TokenTree::Ident(ident) => Separator::Ident(ident),
-            // FIXME: multi-character punctuation
-            TokenTree::Punct(punct) => Separator::Punct(punct),
+            TokenTree::Punct(punct) if matches!(punct.spacing(), Spacing::Alone) => {
+                Separator::Punct(punct)
+            }
+            TokenTree::Punct(punct) if matches!(punct.spacing(), Spacing::Joint) => {
+                if input.peek(Token![*]) || input.peek(Token![+]) || input.peek(Token![?]) {
+                    Separator::Punct(punct)
+                } else {
+                    Self::finish_parsing_puncts(input, vec![punct])?
+                }
+            }
             TokenTree::Literal(literal) => Separator::Literal(literal),
             TokenTree::Group(group) => {
                 return Err(Error::new(group.span(), "unexpected token"));
             }
+            TokenTree::Punct(_) => unreachable!(),
         })
     }
 }

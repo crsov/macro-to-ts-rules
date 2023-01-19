@@ -92,6 +92,7 @@ pub fn matchers_to_dsl_rule<T: IntoIterator<Item = Matcher>>(matchers: T) -> Str
 pub fn matcher_to_dsl_rule(matcher: Matcher) -> String {
     match matcher {
         Matcher::Punct(p) => quoted(p.as_char()),
+        Matcher::Puncts(ps) => quoted(ps.into_iter().map(|p| p.as_char()).collect::<String>()),
         Matcher::Ident(i) => quoted(i),
         Matcher::Literal(l) => quoted(l),
         Matcher::Group {
