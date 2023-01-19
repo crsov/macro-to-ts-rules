@@ -153,6 +153,14 @@ impl Matcher {
     }
 
     fn finish_parsing_puncts(input: ParseStream<'_>, mut puncts: Vec<Punct>) -> Result<Self> {
+        if input.peek(Lifetime) {
+            return Ok(if puncts.len() == 1 {
+                Self::Punct(puncts[0].clone())
+            } else {
+                Self::Puncts(puncts)
+            });
+        }
+
         Ok(match input.parse()? {
             TokenTree::Punct(punct) if matches!(punct.spacing(), Spacing::Alone) => Self::Puncts({
                 puncts.push(punct);
@@ -163,6 +171,14 @@ impl Matcher {
                     puncts.push(punct);
                     puncts
                 })?
+            }
+            TokenTree::Ident(ident) => {
+                // TODO: Not sure about this
+                assert!(puncts.len() == 1);
+                Self::Lifetime(Lifetime {
+                    apostrophe: puncts[0].span(),
+                    ident,
+                })
             }
             _ => unreachable!(),
         })
